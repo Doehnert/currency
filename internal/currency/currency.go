@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sync"
 )
 
 type Currency struct {
@@ -15,7 +14,6 @@ type Currency struct {
 }
 
 type MyCurrencyExchange struct {
-	sync.Mutex
 	Currencies map[string]Currency
 }
 
@@ -59,30 +57,32 @@ func (ce *MyCurrencyExchange) FetchAllCurrencies() error {
 	return nil
 }
 
-func FetchCurrencyRate(currencyCode string) (map[string]float64, error) {
+func (c *Currency) FetchCurrencyRate() error {
+
+	currencyCode := c.Code
+
 	resp, err := http.Get(
 		fmt.Sprintf("https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/%s.json", currencyCode),
 	)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	defer resp.Body.Close()
 
 	rates, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	ratesStruct := make(map[string]interface{})
 	err = json.Unmarshal(rates, &ratesStruct)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	ratesMap := make(map[string]float64)
 	for code, rate := range ratesStruct[currencyCode].(map[string]interface{}) {
 		ratesMap[code] = rate.(float64)
 	}
-
-	return ratesMap, nil
+	c.Rates = ratesMap
+	return nil
 }

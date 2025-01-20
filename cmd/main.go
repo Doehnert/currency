@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 	"time"
 
 	"github.com/Doehnert/currency/internal/currency"
@@ -13,12 +14,10 @@ func runCurrencyWorker(
 	resultChan chan<- currency.Currency) {
 	fmt.Printf("Worker %d started\n", workerId)
 	for c := range currencyChan {
-		// fmt.Printf("Worker %d processing currency %s\n", workerId, c.Code)
-		rates, err := currency.FetchCurrencyRate(c.Code)
+		err := c.FetchCurrencyRate()
 		if err != nil {
 			panic(err)
 		}
-		c.Rates = rates
 		resultChan <- c
 	}
 	fmt.Printf("Worker %d finished\n", workerId)
@@ -38,7 +37,10 @@ func main() {
 	currencyChan := make(chan currency.Currency, len(ce.Currencies))
 	resultChan := make(chan currency.Currency, len(ce.Currencies))
 
-	for i := 0; i < 10; i++ {
+	numOfWorkers := runtime.NumCPU()
+	fmt.Println("Number of workers: ", numOfWorkers)
+
+	for i := 0; i < numOfWorkers*100; i++ {
 		go runCurrencyWorker(i, currencyChan, resultChan)
 	}
 
